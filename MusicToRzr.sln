@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27004.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "iTunesToRzr", "iTunesToRzr\iTunesToRzr.csproj", "{B3E7D152-8144-434B-9485-D747BE0869FB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MusicToRzr", "MusicToRzr\MusicToRzr.csproj", "{B3E7D152-8144-434B-9485-D747BE0869FB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
