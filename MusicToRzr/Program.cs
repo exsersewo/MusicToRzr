@@ -54,7 +54,7 @@ namespace MusicToRzr
 
             InitializeServices();
 
-            if (Arguments.Contains("-interval"))
+            if (Arguments.FirstOrDefault(x=>x.StartsWith("-interval=", StringComparison.Ordinal))!=null)
             {
                 var tmparg = Arguments.FirstOrDefault(x => x.StartsWith("-interval=", StringComparison.Ordinal));
                 interval = Convert.ToInt32(tmparg.Remove(0, "-interval=".Length)); }
