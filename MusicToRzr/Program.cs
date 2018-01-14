@@ -5,6 +5,7 @@ using System.Timers;
 using iTunesLib;
 using Corale.Colore.Core;
 using Corale.Colore.Razer.Keyboard;
+using Corale.Colore.Razer.Keyboard.Effects;
 using SpotifyAPI.Local;
 
 namespace MusicToRzr
@@ -19,7 +20,7 @@ namespace MusicToRzr
         static bool iTunesFeat;
         static bool SpotifyFeat;
         static bool Debug;
-
+        static bool isspectrum;
         static void ConfigureServices()
         {
             if (Arguments.Contains("-itunes"))
@@ -51,6 +52,7 @@ namespace MusicToRzr
         {
             int interval;
             Arguments = args;
+            isspectrum = false;
 
             InitializeServices();
 
@@ -81,70 +83,72 @@ namespace MusicToRzr
             {
                 if(CheckForConnection())
                 {
-                    if (iTunesFeat)
-                        progress = (float)_iTunes.PlayerPosition / _iTunes.CurrentTrack.Duration * 100;
-                    if (SpotifyFeat)
+                    if (CheckForPlaying())
                     {
-                        var status = Spotify.GetStatus();
-                        if (!status.Track.IsAd())
+                        if (iTunesFeat)
+                            progress = (float)_iTunes.PlayerPosition / _iTunes.CurrentTrack.Duration * 100;
+                        if (SpotifyFeat)
                         {
-                            progress = (float)status.PlayingPosition / status.Track.Length * 100;
-                        }
-                        else
-                            progress = 0;
-                    }
-                    if (Debug)
-                        Console.WriteLine(progress.ToString("F0") + "%");
-                    if (Arguments.Contains("--showprogress"))
-                    {
-
-                        if (!CheckForPlaying())
-                        {
-                            Chroma.Instance.Keyboard.SetKeys(GetNumberRow(), new Color());
-                            if (Debug)
-                                Console.WriteLine("Nulled number row");
-                        }
-                        else
-                        {
-                            Chroma.Instance.Keyboard.SetKeys(GetKeysFromProgress(), new Color(5, 255, 101));
-                            if (Debug)
-                                Console.WriteLine("Set Progress");
-                            if ((int)progress % 10 == 0)
+                            var status = Spotify.GetStatus();
+                            if (!status.Track.IsAd())
                             {
-                                CleanRow();
+                                progress = (float)status.PlayingPosition / status.Track.Length * 100;
+                            }
+                            else
+                                progress = 0;
+                        }
+                        if (Debug)
+                            Console.WriteLine(progress.ToString("F0") + "%");
+                        if (Arguments.Contains("--showprogress"))
+                        {
+
+                            if (!CheckForPlaying())
+                            {
+                                Chroma.Instance.Keyboard.SetKeys(GetNumberRow(), new Color());
                                 if (Debug)
                                     Console.WriteLine("Nulled number row");
                             }
-                            if (progress > 10)
+                            else
                             {
-                                Chroma.Instance.Keyboard.SetKey(GetKeyFromNumber((int)progress / 10), new Color(255, 0, 255));
+                                Chroma.Instance.Keyboard.SetKeys(GetKeysFromProgress(), new Color(5, 255, 101));
                                 if (Debug)
-                                    Console.WriteLine("Set 10th key");
+                                    Console.WriteLine("Set Progress");
+                                if ((int)progress % 10 == 0)
+                                {
+                                    CleanRow();
+                                    if (Debug)
+                                        Console.WriteLine("Nulled number row");
+                                }
+                                if (progress > 10)
+                                {
+                                    Chroma.Instance.Keyboard.SetKey(GetKeyFromNumber((int)progress / 10), new Color(255, 0, 255));
+                                    if (Debug)
+                                        Console.WriteLine("Set 10th key");
+                                }
                             }
                         }
-                    }
-                    if (CheckForPlaying())
-                    {
                         Chroma.Instance.Keyboard.SetKey(Key.F6, new Color(0, 255, 0));
                         if (Debug)
                             Console.WriteLine("Playing music");
+                        isspectrum = false;
                     }
                     else
                     {
-                        Chroma.Instance.Keyboard.SetKey(Key.F6, new Color(255, 0, 0));
+                        if (!isspectrum)
+                        {
+                            Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling);
+                            isspectrum = true;
+                            if (Debug)
+                                Console.WriteLine("Enabled Spectrum");
+                        }
                         if (Debug)
                             Console.WriteLine("Not playing music");
                     }
                 }
             }
-            catch (Exception ex)
+            catch
             {
-                if(ex.Message.Contains("E_FAIL"))
-                    Console.WriteLine("I failed pulling data from the media player");
-                if (ex.Message.Contains("Object reference not set"))
-                    Console.WriteLine("Something was null. :/");
-                if (Debug)
-                    Console.WriteLine(ex);
+                Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling);
             }
 
             tmer.Start();
@@ -276,7 +280,16 @@ namespace MusicToRzr
         static bool CheckForPlaying()
         {
             if(iTunesFeat)
-            { if(_iTunes.PlayerState == ITPlayerState.ITPlayerStatePlaying) { return true; } else { return false; } }
+            {
+                if (_iTunes.PlayerState == ITPlayerState.ITPlayerStatePlaying)
+                {
+                    return true;
+                }
+                else
+                {
+                    return false;
+                }
+            }
             if (SpotifyFeat)
             { return Spotify.GetStatus().Playing; }
             return false;
