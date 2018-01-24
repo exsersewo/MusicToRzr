@@ -51,8 +51,8 @@ Current Command Line Arguments are:
 # Installation
 * iTunes & Spotify
 
-Download from [Releases](./releases)
+Download from [Releases](https://github.com/exsersewo/MusicToRzr/releases)
 
 * Foobar2000
 
-Download from [Releases](.releases), & download foo_httpcontrol, add to foobar then download the response template and extract the folder to `foo_httpcontrol HOMEDIRECTORY` and should result in `foo_httpcontrol HOMEDIRECTORY/statsreq/`
+Download from [Releases](https://github.com/exsersewo/MusicToRzr/releases), & download foo_httpcontrol, add to foobar then download the response template and extract the folder to `foo_httpcontrol HOMEDIRECTORY` and should result in `foo_httpcontrol HOMEDIRECTORY/statsreq/`
