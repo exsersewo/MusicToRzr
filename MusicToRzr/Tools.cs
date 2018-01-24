@@ -7,6 +7,7 @@ using Newtonsoft.Json;
 namespace MusicToRzr
 {
     /* Thanks to "Diver Dan" on StackOverflow https://stackoverflow.com/questions/14427596/convert-an-int-to-bool-with-json-net */
+    //Converts "1" & "0" into bool representables
     public class BoolConverter : JsonConverter
     {
         public override void WriteJson(JsonWriter writer, object value, JsonSerializer serializer)
@@ -22,17 +23,24 @@ namespace MusicToRzr
             return objectType == typeof(bool);
         }
     }
+
     public partial class Program
     {
+        /// <summary>
+        /// Converts percentage to key representables
+        /// </summary>
+        /// <returns>List of Keys to light up</returns>
         static List<Key> GetKeysFromProgress()
         {
             List<Key> tmprr = new List<Key>();
+
             if (progress < 10)
             {
                 for (int x = 1; x <= progress; x++)
                 {
-                    if (x == (int)progress) { continue; }
-                    else { tmprr.Add(GetKeyFromNumber(x)); }
+                    if (x == (int)progress) { continue; } //If already lit, skip
+
+                    tmprr.Add(GetKeyFromNumber(x));
                 }
             }
             else
@@ -40,15 +48,23 @@ namespace MusicToRzr
                 int tmpval = 0;
                 int tmp10th = ((int)progress / 10) * 10;
                 tmpval = (int)progress - tmp10th;
+
                 for (int x = 1; x <= tmpval; x++)
                 {
-                    if (x == tmp10th / 10) { continue; }
-                    else { tmprr.Add(GetKeyFromNumber(x)); }
+                    if (x == tmp10th / 10) { continue; } //If already lit, skip
+
+                    tmprr.Add(GetKeyFromNumber(x));
                 }
             }
 
             return tmprr;
         }
+
+        /// <summary>
+        /// Gets the Key represented by the number
+        /// </summary>
+        /// <param name="number">Key to get</param>
+        /// <returns>Key from Number</returns>
         static Key GetKeyFromNumber(int number)
         {
             Key rtn = 0;
@@ -87,6 +103,11 @@ namespace MusicToRzr
             }
             return rtn;
         }
+
+        /// <summary>
+        /// Gets the entire number row
+        /// </summary>
+        /// <returns>Number Row List</returns>
         static List<Key> GetNumberRow()
         {
             List<Key> rtn = new List<Key>();
@@ -96,6 +117,12 @@ namespace MusicToRzr
             }
             return rtn;
         }
+
+        /// <summary>
+        /// Gets the number associated by the key
+        /// </summary>
+        /// <param name="key">Key to look for</param>
+        /// <returns>Number from key</returns>
         static int GetNumberFromKey(Key key)
         {
             int rtn = 0;
@@ -134,17 +161,18 @@ namespace MusicToRzr
             }
             return rtn;
         }
+
+        /// <summary>
+        /// Wipe number row
+        /// </summary>
         static void CleanRow()
         {
             var keys = GetNumberRow();
             foreach (var key in keys)
             {
-                if (Chroma.Instance.Keyboard.IsSet(key) && (int)progress / 10 == GetNumberFromKey(key))
-                { continue; }
-                else
-                {
-                    Chroma.Instance.Keyboard.SetKey(key, new Color());
-                }
+                if (Chroma.Instance.Keyboard.IsSet(key) && (int)progress / 10 == GetNumberFromKey(key)) { continue; } //If the key is the 10th value, don't do anything
+
+                Chroma.Instance.Keyboard.SetKey(key, new Color());
             }
         }
     }

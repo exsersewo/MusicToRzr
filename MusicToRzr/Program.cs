@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Timers;
 using iTunesLib;
@@ -64,7 +63,7 @@ namespace MusicToRzr
     partial class Program
     {
         //Start Variables
-        static IiTunes _iTunes;
+        static IiTunes iTunes;
         static SpotifyLocalAPI Spotify;
         static string[] Arguments;
         static Timer tmer;
@@ -78,49 +77,63 @@ namespace MusicToRzr
         //End Variables
 
         /// <summary>
-        /// Parse Foodata
+        /// Configures Which Service to use
         /// </summary>
         static void ConfigureServices()
         {
             if (Arguments.Contains("-itunes"))
             { iTunesFeat = true; SpotifyFeat = false; FoobarFeat = false; }
+
             if (Arguments.Contains("-spotify"))
             { iTunesFeat = false; SpotifyFeat = true; FoobarFeat = false; }
+
             if (Arguments.Contains("-foobar"))
             { iTunesFeat = false; SpotifyFeat = false; FoobarFeat = true; }
         }
 
+        /// <summary>
+        /// Create the instance to use
+        /// </summary>
         static void InitializeServices()
         {
             ConfigureServices();
             if (iTunesFeat)
-            { _iTunes = new iTunesApp(); return; }
+                iTunes = new iTunesApp(); //new instance of itunes using COM service
+
             if (SpotifyFeat)
             {
-                Spotify = new SpotifyLocalAPI();
+                //Check for spotify errors before connecting
                 if (!SpotifyLocalAPI.IsSpotifyInstalled())
-                    throw new Exception("Spotify Not Installed");
+                    throw new Exception("Spotify Not Installed"); //Why run spotify mode if you don't have it installed?
+
                 if (!SpotifyLocalAPI.IsSpotifyRunning())
-                    SpotifyLocalAPI.RunSpotify();
+                    SpotifyLocalAPI.RunSpotify(); //Start spotify if not running
+
                 if (!SpotifyLocalAPI.IsSpotifyWebHelperRunning())
-                    SpotifyLocalAPI.RunSpotifyWebHelper();
-                if (!Spotify.Connect())
+                    SpotifyLocalAPI.RunSpotifyWebHelper(); //Start webhelper if not running
+
+                Spotify = new SpotifyLocalAPI(); //new instance
+
+                if (!Spotify.Connect()) //critical
                     throw new Exception("Couldn't connect to spotify");
-                return;
             }
+
             if(FoobarFeat)
             {
-                var ip = Arguments.FirstOrDefault(x => x.StartsWith("--foo-ip=", StringComparison.Ordinal));
-                if (ip != null)
+                var ip = Arguments.FirstOrDefault(x => x.StartsWith("--foo-ip=", StringComparison.Ordinal)); //gets foo-ip
+
+                if (ip != null) //checks for null
                 {
-                    ip = ip.Remove(0, "--foo-ip=".Length);
-                    if (int.TryParse(Arguments.FirstOrDefault(x => x.StartsWith("--foo-port=", StringComparison.Ordinal)).Remove(0, "--foo-port=".Length), out int port) && ip != null)
+                    ip = ip.Remove(0, "--foo-ip=".Length); //remove the argument text
+
+                    if (int.TryParse(Arguments.FirstOrDefault(x => x.StartsWith("--foo-port=", StringComparison.Ordinal)).Remove(0, "--foo-port=".Length), out int port) && ip != null) //tries to convert foo-port argument to int after removing text, and checks if ip isn't null
                     {
-                        Foobar = new Foobar(ip, Convert.ToInt32(port));
+                        Foobar = new Foobar(ip, Convert.ToInt32(port)); //use user-args
                     }
+
                     return;
                 }
-                Foobar = new Foobar("localhost", 8888);
+                Foobar = new Foobar("localhost", 8888); //no user-args, use default
             }
         }
 
@@ -132,99 +145,118 @@ namespace MusicToRzr
 
             InitializeServices();
 
-            if (Arguments.FirstOrDefault(x=>x.StartsWith("-interval=", StringComparison.Ordinal))!=null)
+            if (int.TryParse(Arguments.FirstOrDefault(x=>x.StartsWith("-interval=", StringComparison.Ordinal)).Remove(0, "-interval=".Length), out int intvl)) //checks if interval exists, and sucessfully converted to int
             {
-                var tmparg = Arguments.FirstOrDefault(x => x.StartsWith("-interval=", StringComparison.Ordinal));
-                interval = Convert.ToInt32(tmparg.Remove(0, "-interval=".Length)); }
-            else
+                interval = intvl;
+            }
+            else //use default of 1 second
                 interval = 1000;
-            if (Arguments.Contains("-debug"))
-            { Debug = true; Console.WriteLine("\nLoaded Debug Version"); }
+
+            if (Arguments.Contains("-debug")) //if use debug version
+            {
+                Debug = true;
+                Console.WriteLine("\nLoaded Debug Version");
+            }
             else
                 Debug = false;
+
             tmer = new Timer
             {
-                Interval = interval
+                Interval = interval //new timer with interval
             };
-            tmer.Elapsed += async (s,e) => await Execute();
+
+            tmer.Elapsed += async (s,e) => await Execute(); //sets elapsed method
             tmer.AutoReset = true;
+
             Console.WriteLine($"Hello!! I work automatically.\nI poll data every {interval}ms and toggle the media keys depending on playback status.\n\nYou can optionally (using the argument \"--showprogress\") show the progress in the number bar.");
+
             tmer.Start();
-            while (true) { }
+
+            Console.ReadLine();
         }
 
+        /// <summary>
+        /// Main Execution method to parse progress & Media Keys
+        /// </summary>
+        /// <returns>Void</returns>
         static async Task Execute()
         {
             try
             {
-                if(await CheckForConnection())
+                if(await CheckForConnection()) //is the service alive?
                 {
-                    if (await CheckForPlaying())
+                    if (await CheckForPlaying()) //is the music player playing music?
                     {
-                        if (iTunesFeat)
-                            progress = (float)_iTunes.PlayerPosition / _iTunes.CurrentTrack.Duration * 100;
-                        if (SpotifyFeat)
-                        {
-                            var status = Spotify.GetStatus();
-                            if (!status.Track.IsAd())
-                            {
-                                progress = (float)status.PlayingPosition / status.Track.Length * 100;
-                            }
-                            else
-                                progress = 0;
-                        }
-                        if (FoobarFeat)
-                        {
-                            var foodata = await Foobar.GetStatusAsync();
-                            if (foodata != null)
-                            {
-                                progress = (float)foodata.ElapsedTime / foodata.TrackLength * 100;
-                            }
-                        }
-                        if (Debug)
-                            Console.WriteLine(progress.ToString("F0") + "%");
                         if (Arguments.Contains("--showprogress"))
                         {
+                            //Begin Progress parser
+                            if (iTunesFeat)
+                                progress = (float)iTunes.PlayerPosition / iTunes.CurrentTrack.Duration * 100;
 
-                            if (!await CheckForPlaying())
+                            if (SpotifyFeat)
                             {
-                                Chroma.Instance.Keyboard.SetKeys(GetNumberRow(), new Color());
+                                var status = Spotify.GetStatus();
+                                if (!status.Track.IsAd())
+                                {
+                                    progress = (float)status.PlayingPosition / status.Track.Length * 100;
+                                }
+                                else
+                                    progress = 0;
+                            }
+
+                            if (FoobarFeat)
+                            {
+                                var foodata = await Foobar.GetStatusAsync();
+                                if (foodata != null)
+                                {
+                                    progress = (float)foodata.ElapsedTime / foodata.TrackLength * 100;
+                                }
+                            }
+                            //End progress parser
+
+                            if (Debug)
+                                Console.WriteLine(progress.ToString("F0") + "%"); //If debug version, dump output
+
+                            Chroma.Instance.Keyboard.SetKeys(GetKeysFromProgress(), new Color(5, 255, 101)); //Sets the key to current progress
+
+                            if (Debug)
+                                Console.WriteLine("Set Progress");
+
+                            if ((int)progress % 10 == 0) //if it is divisible by 10 perfectly after casting to int
+                            {
+                                CleanRow();
+
                                 if (Debug)
                                     Console.WriteLine("Nulled number row");
                             }
-                            else
+
+                            if (progress > 10) // if greater than 10
                             {
-                                Chroma.Instance.Keyboard.SetKeys(GetKeysFromProgress(), new Color(5, 255, 101));
+                                Chroma.Instance.Keyboard.SetKey(GetKeyFromNumber((int)progress / 10), new Color(255, 0, 255)); //set the 10th value
                                 if (Debug)
-                                    Console.WriteLine("Set Progress");
-                                if ((int)progress % 10 == 0)
-                                {
-                                    CleanRow();
-                                    if (Debug)
-                                        Console.WriteLine("Nulled number row");
-                                }
-                                if (progress > 10)
-                                {
-                                    Chroma.Instance.Keyboard.SetKey(GetKeyFromNumber((int)progress / 10), new Color(255, 0, 255));
-                                    if (Debug)
-                                        Console.WriteLine("Set 10th key");
-                                }
+                                    Console.WriteLine("Set 10th value key");
                             }
                         }
-                        Chroma.Instance.Keyboard.SetKey(Key.F6, new Color(0, 255, 0));
+                        Chroma.Instance.Keyboard.SetKey(Key.F6, new Color(0, 255, 0)); //playing music, so set the play key to green
+
                         if (Debug)
                             Console.WriteLine("Playing music");
-                        isspectrum = false;
+
+                        isspectrum = false; //disable spectrum
                     }
                     else
                     {
-                        if (!isspectrum)
+                        Chroma.Instance.Keyboard.SetKeys(GetNumberRow(), new Color()); //clean row
+
+                        if (!isspectrum) //if not spectrumed
                         {
-                            Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling);
-                            isspectrum = true;
+                            Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling); //set to spectrum
+                            isspectrum = true; //enable spectrum to prevent loop
+
                             if (Debug)
                                 Console.WriteLine("Enabled Spectrum");
                         }
+
                         if (Debug)
                             Console.WriteLine("Not playing music");
                     }
@@ -232,51 +264,61 @@ namespace MusicToRzr
             }
             catch
             {
-                Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling);
+                Chroma.Instance.Keyboard.SetEffect(Effect.SpectrumCycling); //if error'd, spectrum
             }
 
-            tmer.Start();
+            tmer.Start(); //restart timer
         }
 
+        /// <summary>
+        /// Checks if service is playing music
+        /// </summary>
+        /// <returns>True if playing music, False if not playing music</returns>
         static async Task<bool> CheckForPlaying()
         {
             if(iTunesFeat)
             {
-                if (_iTunes.PlayerState == ITPlayerState.ITPlayerStatePlaying)
-                { return true; }
+                if (iTunes.PlayerState == ITPlayerState.ITPlayerStatePlaying)
+                    return true;
             }
+
             if (SpotifyFeat)
-            { return Spotify.GetStatus().Playing; }
+            {
+                return Spotify.GetStatus().Playing;
+            }
+
             if (FoobarFeat)
             {
                 var resp = await Foobar.GetStatusAsync();
+
                 if(resp!=null)
-                { return resp.Playing; }
+                    return resp.Playing;
             }
             return false;
         }
+
+        /// <summary>
+        /// Checks if any of the services has a connection
+        /// </summary>
+        /// <returns>True if service has a connection, false if not</returns>
         static async Task<bool> CheckForConnection()
         {
             if(iTunesFeat)
             {
-                if (_iTunes.Version != null)
-                { return true; }
-                else
-                { return false; }
+                if (iTunes.Version != null)
+                    return true;
             }
+
             if(SpotifyFeat)
             {
-                if (!SpotifyLocalAPI.IsSpotifyRunning() || !SpotifyLocalAPI.IsSpotifyWebHelperRunning())
-                { return false; }
-                else if (SpotifyLocalAPI.IsSpotifyRunning() && SpotifyLocalAPI.IsSpotifyWebHelperRunning())
-                { return true; }
+                if (SpotifyLocalAPI.IsSpotifyRunning() && SpotifyLocalAPI.IsSpotifyWebHelperRunning())
+                    return true;
             }
+
             if (FoobarFeat)
             {
                 if (await Foobar.GetStatusAsync() != null)
-                { return true; }
-                else
-                { return false; }
+                    return true;
             }
             return false;
         }
