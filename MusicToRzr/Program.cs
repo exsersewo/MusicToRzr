@@ -139,18 +139,20 @@ namespace MusicToRzr
 
         static void Main(string[] args)
         {
-            int interval;
+            int interval = 1000; //use default of 1 second
             Arguments = args;
             isspectrum = false;
 
             InitializeServices();
 
-            if (int.TryParse(Arguments.FirstOrDefault(x=>x.StartsWith("-interval=", StringComparison.Ordinal)).Remove(0, "-interval=".Length), out int intvl)) //checks if interval exists, and sucessfully converted to int
+            var rawintvl = Arguments.FirstOrDefault(x => x.StartsWith("-interval=", StringComparison.Ordinal));
+            if (rawintvl != null) //if rawintvl not null
             {
-                interval = intvl;
+                if (int.TryParse(rawintvl.Remove(0, "-interval=".Length), out int intvl)) //checks if interval exists, and sucessfully converted to int
+                {
+                    interval = intvl;
+                }
             }
-            else //use default of 1 second
-                interval = 1000;
 
             if (Arguments.Contains("-debug")) //if use debug version
             {
